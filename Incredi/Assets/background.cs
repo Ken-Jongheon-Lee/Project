@@ -6,9 +6,15 @@ using NetMQ; // for NetMQConfig
 using NetMQ.Sockets;
 using NetMQ.Monitoring;
 
-class Position
+[System.Serializable]
+public class Position
 {
-    float x, y;
+    public float x, y;
+
+    public static Position CreateFromJson(string jsonString)
+    {
+        return JsonUtility.FromJson<Position>(jsonString);
+    }
 }
 
 public class background : MonoBehaviour
@@ -17,6 +23,7 @@ public class background : MonoBehaviour
     Thread client_thread_;
     private Object thisLock_ = new Object();
     bool stop_thread_ = false;
+    public Position pos;
     //var requestSocket;
     void Start()
     {
@@ -32,28 +39,33 @@ public class background : MonoBehaviour
     {
         AsyncIO.ForceDotNet.Force();
         using (var context = NetMQContext.Create())
-        using (var server = context.CreateResponseSocket())
-        using (var client = context.CreateRequestSocket())
+        using (var res = context.CreateResponseSocket())
+        using (var req = context.CreateRequestSocket())
         {
             // bind the server to a local tcp address
            // server.Bind("tcp://localhost:4231");
 
             // connect the client to the server
-            client.Connect("tcp://127.0.0.1:5433");
-
-            // send a message from the client socket
-            client.Send("aaaaa");
+            req.Connect("tcp://127.0.0.1:5433");
+            
+            // send a message from the req socket
+            req.Send("aaaaa");
             string msg;
             var timeout = new System.TimeSpan(0, 0, 1); //1sec
-            bool is_connected = client.TryReceiveFrameString(timeout, out msg);
+            bool is_connected = req.TryReceiveFrameString(timeout, out msg);
 
             while (is_connected  && stop_thread_ == false)
             {
                 Debug.Log("Request a message.");
-                client.SendFrame("msg");
-                is_connected = client.TryReceiveFrameString(timeout, out msg);
-                Debug.Log("Sleep");
-                Thread.Sleep(1000);
+                req.SendFrame("msg");
+                is_connected = req.TryReceiveFrameString(timeout, out msg);
+                
+                pos = Position.CreateFromJson(msg);
+
+                Debug.Log(pos.x);           
+                Debug.Log(pos.y);
+
+                Thread.Sleep(1/60);
             }
 
 

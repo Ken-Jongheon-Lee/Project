@@ -2,8 +2,7 @@
 "use strict"
 
 
-var sys = require("sys"),
-    b2d = require("./box2dnode");
+var b2d = require("./box2dnode");
 
 // Define world
 var worldAABB = new b2d.b2AABB();
@@ -18,6 +17,7 @@ var world = new b2d.b2World(worldAABB, gravity, doSleep);
 // Ground Box
 var groundBodyDef = new b2d.b2BodyDef();
 groundBodyDef.position.Set(0.0, -10.0);
+groundBodyDef.angle = 0.0;
 
 var groundBody = world.CreateBody(groundBodyDef);
 
@@ -28,7 +28,7 @@ groundBody.CreateShape(groundShapeDef);
 
 // Dynamic Body
 var bodyDef = new b2d.b2BodyDef();
-bodyDef.position.Set(0.0, 4.0);
+bodyDef.position.Set(0.0, 50.0);
 
 var body = world.CreateBody(bodyDef);
 
@@ -43,21 +43,29 @@ body.SetMassFromShapes();
 var timeStep = 1.0 / 60.0;
 
 var iterations = 10;
-
+/*
 for (var i = 0; i < 60; i++) {
     world.Step(timeStep, iterations);
     var position = body.GetPosition();
     var angle = body.GetAngle();
     sys.puts(i + ": <" + position.x + ", " + position.y + "> @" + angle);
 }
-
+*/
 
 const zmq = require('zmq'),
     responder = zmq.socket('rep'),
     req = zmq.socket('req');
-
+var i = 0;
+responder.on('connection', function () {
+    bodyDef.position.Set(0.0, 50.0);
+});
 responder.on('message', function (data) {
-    responder.send('aaa');
+    world.Step(timeStep, iterations);
+
+    var position = body.GetPosition();
+    var pos = { 'x' : position.x, 'y' : position.y };
+    
+    responder.send(JSON.stringify(pos));
     console.log(data);
 });
 
