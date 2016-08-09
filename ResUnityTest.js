@@ -52,28 +52,37 @@ for (var i = 0; i < 60; i++) {
 }
 */
 
+var BODIES = {};
 const zmq = require('zmq'),
     responder = zmq.socket('rep'),
     req = zmq.socket('req');
 var i = 0;
+var con = false;
 responder.on('connection', function () {
-    bodyDef.position.Set(0.0, 50.0);
+    
 });
 responder.on('message', function (data) {
-    world.Step(timeStep, iterations);
-
-    var position = body.GetPosition();
-    var pos = { 'x' : position.x, 'y' : position.y };
+    con = true;
     
-    responder.send(JSON.stringify(pos));
     console.log(data);
 });
 
 
 responder.bind('tcp://127.0.0.1:5433', function (err) {
     console.log('listening for zmq requesters...')
-});
+}); 
 
+
+setInterval(function () {
+    if (!con)
+        return;
+    world.Step(timeStep, iterations);
+    
+    var position = body.GetPosition();
+    var pos = { 'x' : position.x, 'y' : position.y };
+    console.log(pos);
+    responder.send(JSON.stringify(pos));
+}, 1000 / 25);
 
 // close the responder when the Node process ends
 process.on('SIGINT', function () {
