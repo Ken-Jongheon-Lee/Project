@@ -95,7 +95,7 @@ public class background : MonoBehaviour
             
             while ( stop_thread_ == false)
             {
-                req.Send("aaaaa");
+               
                 Debug.Log("Request a message.");
                 /*if(m_send)
                 {
@@ -104,13 +104,17 @@ public class background : MonoBehaviour
                     m_send = false;
                 }*/
 
-                req.TryReceiveFrameString(timeout, out msg);
-                
-                pos = Position.CreateFromJson(msg);
-                Debug.Log(pos.x);
-                Debug.Log(pos.y);
+                if (req.TryReceiveFrameString(timeout, out msg))
+                {
+                    req.TrySendFrame("aaaaa");
 
-                Thread.Sleep(1/60);
+                    pos = Position.CreateFromJson(msg);
+                    Debug.Log(pos.x);
+                    Debug.Log(pos.y);
+                }
+                    
+                
+                Thread.Sleep(500);
             }
 
 

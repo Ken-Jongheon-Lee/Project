@@ -74,15 +74,19 @@
       <HintPath>Library\UnityAssemblies\UnityEditor.dll</HintPath>
     </Reference>
     <Reference Include="AsyncIO">
-      <HintPath>Assets\PlugIn\AsyncIO.dll</HintPath>
+      <HintPath>Assets\PlugIns\AsyncIO.dll</HintPath>
     </Reference>
     <Reference Include="NetMQ">
-      <HintPath>Assets\PlugIn\NetMQ.dll</HintPath>
+      <HintPath>Assets\PlugIns\NetMQ.dll</HintPath>
+    </Reference>
+    <Reference Include="protobuf-net">
+      <HintPath>Assets\PlugIns\protobuf-net.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Script\Move.cs" />
     <Compile Include="Assets\Script\background.cs" />
+    <Compile Include="Assets\Script\projectA.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\SyntaxTree\UnityVS\2015\UnityVS.CSharp.targets" />
 </Project>

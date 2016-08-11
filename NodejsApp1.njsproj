@@ -645,7 +645,9 @@
     <Folder Include="ProtoC" />
     <Folder Include="typings\" />
     <Folder Include="typings\globals\" />
+    <Folder Include="typings\globals\express\" />
     <Folder Include="typings\globals\node\" />
+    <Folder Include="typings\globals\socket.io\" />
     <Folder Include="Unity" />
     <Folder Include="Unity\SocketIO" />
     <Folder Include="Unity\SocketIO\Assets" />
@@ -933,7 +935,9 @@
     <Folder Include="UnitySocketIO\SocketIO\socketio\Messages\Helper" />
   </ItemGroup>
   <ItemGroup>
+    <TypeScriptCompile Include="typings\globals\express\index.d.ts" />
     <TypeScriptCompile Include="typings\globals\node\index.d.ts" />
+    <TypeScriptCompile Include="typings\globals\socket.io\index.d.ts" />
     <TypeScriptCompile Include="typings\index.d.ts" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />

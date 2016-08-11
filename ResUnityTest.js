@@ -3,6 +3,7 @@
 
 
 var b2d = require("./box2dnode");
+var ProtoBuf = require("./protobufjs");
 
 // Define world
 var worldAABB = new b2d.b2AABB();
@@ -58,13 +59,35 @@ const zmq = require('zmq'),
     req = zmq.socket('req');
 var i = 0;
 var con = false;
+var proto = ProtoBuf.protoFromFile("projectA.proto");
 responder.on('connection', function () {
     
 });
 responder.on('message', function (data) {
     con = true;
     
+    var position = body.GetPosition();
+    var pos = { 'x' : position.x, 'y' : position.y };
+    //console.log(pos);
+    //responder.send(JSON.stringify(pos));
     console.log(data);
+    if(data[0] !== 97)
+    //if (data.type === 'binary') S
+    {
+        
+        var SomeMessage = proto.build("ProjectA");
+        if (SomeMessage !== null) {
+            var aa = SomeMessage.Respawn.decode(data);
+            console.log(aa.x);
+            console.log(aa.y);
+            console.log(data);
+        }
+    }
+
+    var position = body.GetPosition();
+    var pos = { 'x' : position.x, 'y' : position.y };    
+    responder.send(JSON.stringify(pos));
+ 
 });
 
 
@@ -74,15 +97,11 @@ responder.bind('tcp://127.0.0.1:5433', function (err) {
 
 
 setInterval(function () {
-    if (!con)
-        return;
+    
     world.Step(timeStep, iterations);
     
-    var position = body.GetPosition();
-    var pos = { 'x' : position.x, 'y' : position.y };
-    console.log(pos);
-    responder.send(JSON.stringify(pos));
-}, 1000 / 25);
+
+}, 100);
 
 // close the responder when the Node process ends
 process.on('SIGINT', function () {

@@ -1,0 +1,7 @@
+package ProjectA;
+
+message Respawn {
+	required float x = 1;
+	required float y = 2;
+	required int32 unitType = 3;
+}
