@@ -4,3 +4,5 @@ protobufjs/
 Tools/
 typings/
 *.backup
+.vs/NodejsApp1/v14/.suo
+*.suo

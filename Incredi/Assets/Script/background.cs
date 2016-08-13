@@ -91,7 +91,7 @@ public class background : MonoBehaviour
             string msg;
             var timeout = new System.TimeSpan(0, 0, 1); //1sec
             req.Send("aaaaa");
-            bool is_connected = req.TryReceiveFrameString(timeout, out msg);
+            //bool is_connected = req.TryReceiveFrameString(timeout, out msg);
             
             while ( stop_thread_ == false)
             {
