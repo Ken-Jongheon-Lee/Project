@@ -6,9 +6,9 @@ const
   zmq = require('zmq');
 
 var b2d = require("./box2dnode");
-var ProtoBuf = require("./protobufjs");
+var ProtoBuf = require("protobufjs");
 
-var room = function (id) {
+var room = function (id, b2b) {
     var self = {
         isInit: false,
         id: id,
@@ -26,14 +26,14 @@ var room = function (id) {
 
         var gravity = new b2b.b2Vec2(0, -10);
         var doSleep = true;
-
+	self.world = new b2d.b2World(self.worldAABB, gravity,doSleep);
 
 
         if (self.groundBody === null) {
             var groundBodyDef = new b2b.b2BodyDef();
             groundBodyDef.position.Set(0.0, -10.0);
             groundBodyDef.angle = 0.0;
-            self.groundBody = world.CreateBody(groundBodyDef);
+            self.groundBody = self.world.CreateBody(groundBodyDef);
 
             var groundShapeDef = new b2d.b2PolygonDef();
             groundShapeDef.SetAsBox(50.0, 10.0);
@@ -55,11 +55,12 @@ var room = function (id) {
             self.body.SetMassFromShapes();
         }
         self.init = true;
-    }
+    };
 
     self.update = function (timeStep) {
         world.Step(timeStep, 10);
     }
+	return self;
 }
 
 var gameWorld = {}
@@ -67,19 +68,21 @@ if (cluster.isMaster) {
 
     // master process - create ROUTER and DEALER sockets, bind endpoints
     let
-      router = zmq.socket('router').bind('tcp://127.0.0.1:5433'),
-      dealer = zmq.socket('dealer').bind('tcp://127.0.0.1:5434');
-      //dealer = zmq.socket('dealer').bind('ipc://filer-dealer.ipc');
+      router = zmq.socket('router').bind('tcp://0.0.0.0:5433'),
+      dealer = zmq.socket('dealer').bind('tcp://0.0.0.0:5434');
+      //dealer = zmq.socket('dealer').bind('ipc://a.ipc');
 
     // forward messages between router and dealer
     router.on('message', function () {
-        let frames = Array.prototype.slice.call(arguments);
+	console.log("router.on");
+        let frames = Array.apply(null,arguments);
         dealer.send(frames);
-        router.send('aaa');
+        //router.send('aaa');
     });
 
     dealer.on('message', function () {
-        let frames = Array.prototype.slice.call(null, arguments);
+	console.log(" dealer.on" + arguments);
+        let frames = Array.apply(null, arguments);
         router.send(frames);
     });
 
@@ -91,35 +94,29 @@ if (cluster.isMaster) {
     // fork three worker processes
     for (let i = 0; i < 3; i++) {
         cluster.fork();
+
     }
 
 } else {
 
     // worker process - create REP socket, connect to DEALER
-    let responder = zmq.socket('rep').connect('tcp://127.0.0.1:5434');
-    //if (responder)
+    let responder = zmq.socket('rep').connect('tcp://0.0.0.0:5434');
+	
+    if (responder)
     {
         var id = process.pid;
-        var rm = room(id);
-        gameWorld[id] = rm;
+
+
+        gameWorld[id] = room(id, b2d);
+	gameWorld[id].init();
+	console.log("createdroom" + id);
     }
+	
+
     responder.on('message', function (data) {
-
-        var aa = 0;
-        
-        // parse incoming message
-        let request = JSON.parse(data);
-        console.log(process.pid + ' received request for: ' + request.path);
-
-        // read file and reply with content
-        fs.readFile(request.path, function (err, data) {
-            console.log(process.pid + ' sending response');
-            responder.send(JSON.stringify({
-                pid: process.pid,
-                data: data.toString(),
-                timestamp: Date.now()
-            }));
-        });
+	
+	responder.send("aaaa");
+	console.log("responder.on(message " + data);
 
     });
 

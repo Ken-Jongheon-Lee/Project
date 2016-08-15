@@ -3,7 +3,7 @@
 
 
 var b2d = require("./box2dnode");
-var ProtoBuf = require("./protobufjs");
+var ProtoBuf = require("protobufjs");
 
 // Define world
 var worldAABB = new b2d.b2AABB();
@@ -91,7 +91,7 @@ responder.on('message', function (data) {
 });
 
 
-responder.bind('tcp://127.0.0.1:5433', function (err) {
+responder.bind('tcp://0.0.0.0:5433', function (err) {
     console.log('listening for zmq requesters...')
 }); 
 
