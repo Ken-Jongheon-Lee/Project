@@ -92,11 +92,11 @@ public class background : MonoBehaviour
             var timeout = new System.TimeSpan(0, 0, 1); //1sec
             req.Send("aaaaa");
             //bool is_connected = req.TryReceiveFrameString(timeout, out msg);
-            
+             
             while ( stop_thread_ == false)
             {
                
-                Debug.Log("Request a message.");
+                //Debug.Log("Request a message.");
                 /*if(m_send)
                 {
                     string json = JsonUtility.ToJson(m_pk);
