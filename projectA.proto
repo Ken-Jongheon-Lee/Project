@@ -1,7 +1,59 @@
 package ProjectA;
 
-message Respawn {
+message LoginReq{
+	
+	required string id = 1;
+	required string pw = 2;
+}
+
+message LoginRes{
+	
+	required bool bResult = 1;
+	required string key = 2;
+}
+
+message RespawnReq {
+	
 	required float x = 1;
 	required float y = 2;
 	required int32 unitType = 3;
+	required string key =4;
 }
+
+message RespawnRes {
+	required bool bResult = 1;
+	
+}
+
+message SyncReq {
+	required int32 Count = 1;
+	required string key = 2;
+}
+
+
+message SyncRes {
+	required int32 x = 1;
+	required int32 y = 2;
+}
+
+message OneMessage {
+	enum ProtocolType {
+		LOGINREQ = 1;
+		LOGINRES = 2;
+		RESPWANREQ = 3;
+		RESPWANRES = 4;
+		SYNKREQ = 5;
+		SYNKRES = 6;
+	}
+	
+	required ProtocolType pType = 1;
+	optional LoginReq loginReq = 2;
+	optional LoginRes loginRes = 3;
+	optional RespawnReq respawnReq = 4;
+	optional RespawnRes	respawnRes = 5;
+	optional SyncReq syncReq = 6;
+	optional SyncRes syncRes = 7;
+
+}
+
+

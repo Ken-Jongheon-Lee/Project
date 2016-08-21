@@ -1,7 +1,29 @@
 
-M
-projectA.protoProjectA"1
-Respawn	
-x (	
-y (
-unitType (
+û
+projectA.protoProjectA"8
+Type$
+type (2.ProjectA.ProtocolType
+
+id (	"@
+LoginReq
+type (2.ProjectA.Type
+
+id (	
+
+pw (	"F
+LoginRes
+type (2.ProjectA.Type
+bResult (
+key (	"O
+Respawn
+type (2.ProjectA.Type	
+x (	
+y (
+unitType (*J
+ProtocolType
+LOGINREQ
+LOGINRES
+
+RESPWANREQ
+
+RESPWANRES

@@ -9,8 +9,9 @@ var net = require('net');
 
 var b2d = require("./box2dnode");
 var ProtoBuf = require("protobufjs");
+var protobuf = ProtoBuf.protoFromFile("projectA.proto");
 
-var room = function (id, b2b) {
+var createRoom = function (id, b2b) {
     var self = {
         isInit: false,
         id: id,
@@ -61,7 +62,7 @@ var room = function (id, b2b) {
             self.body.CreateShape(shapeDef);
             self.body.SetMassFromShapes();
         
-        self.init = true;
+            self.isInit = true;
     };
 
     self.update = function (timeStep) {
@@ -70,36 +71,50 @@ var room = function (id, b2b) {
 	return self;
 }
 
-var gameWorld = [];
+var gameWorld = new Map();
+var users = [];
+var mapIdToKey = new Map();
+
+
+setInterval(function () {
+    gameWorld.forEach(function (world, key, map) {
+        if (world.isInit) {
+            world.update(1.0 / 60.0);
+            var position = world.body.GetPosition();
+            var pos = { 'x': position.x, 'y': position.y };
+            //console.log("gameWorld.forEach");
+        }        
+    });
+}, 100);
+
+function makekey() {
+    var text = "";
+    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+    for (var i = 0; i < 5; i++)
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+
+    return text;
+}
+
 if (cluster.isMaster) {
 
     // master process - create ROUTER and DEALER sockets, bind endpoints
     let
-      router = zmq.socket('router'),
-      dealer = zmq.socket('dealer').bind('tcp://127.0.0.1:5434');
+        router = zmq.socket('router'),
+        dealer = zmq.socket('dealer');
+
+
+
       //dealer = zmq.socket('dealer').bind('ipc://a.ipc');
     router.monitor(500, 0);
     router.bind('tcp://127.0.0.1:5433');
+    dealer.bind('tcp://127.0.0.1:5434');
+
+    
     
     router.on('accept', function (data, ep) {
-        
 
-        
-        var index = 0;
-        var id = data;        
-
-        var bFound = gameWorld.find(function (id) {
-            gameWorld.forEach(function (world) {
-                return world.id === id;
-            });
-        });
-
-        if (!bFound) {
-            var rm = room(id, b2d);
-            gameWorld.push(rm);
-
-            console.log('created Room id : ' + id);
-        }
     });
 
     // forward messages between router and dealer
@@ -107,9 +122,6 @@ if (cluster.isMaster) {
 	    console.log("router.on");
         let frames = Array.apply(null, arguments);
         dealer.send(frames);
-        
-
-        //router.send('aaa');
     });
 
     dealer.on('message', function () {
@@ -118,7 +130,7 @@ if (cluster.isMaster) {
         console.log(" dealer.on" + frames.length);
         router.send(frames);
 
-        
+
     });
 
     // listen for workers to come online
@@ -127,7 +139,7 @@ if (cluster.isMaster) {
     });
 
     // fork three worker processes
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 1; i++) {
         cluster.fork();
 
     }
@@ -137,26 +149,132 @@ if (cluster.isMaster) {
     // worker process - create REP socket, connect to DEALER
     let responder = zmq.socket('rep').connect('tcp://127.0.0.1:5434');
     var id = 0;
-    if (responder) {
-        id = process.pid;
-        
-        
-        gameWorld[id] = room(id, b2d);
-        gameWorld[id].init();
-        console.log("createdroom" + id);
-        
-        //
-    }
-	
- 
+
+    
 
     responder.on('message', function (data) {
-	
-        var position = gameWorld[id].getBodyPos();
-        var pos = { 'x' : position.x, 'y' : position.y };
-        responder.send(JSON.stringify(pos));
-        console.log("responder.on(message " +id + data);
-        gameWorld[id].update();
+
+        console.log("process.pid" + process.pid);
+
+        var OneMsg = protobuf.build("ProjectA");
+
+        console.log("data" + data);
+
+        var pkInfo = OneMsg.OneMessage.decode(data); 
+        
+        switch (pkInfo.pType) {
+            case 1: //loginReq
+                {
+                    var id = pkInfo.loginReq.id;
+                    var found = mapIdToKey.has(id);
+
+                    if (found)
+                        break;
+
+                    console.log("login id : " + pkInfo.loginReq.id);
+                    var ProjectA = protobuf.build("ProjectA");
+                    var key = makekey();
+                    //send res                    
+                     var msg = new ProjectA.OneMessage({
+                        
+                        
+                        "loginRes": {
+                            "bResult": true,
+                            "key": key,
+                         },
+                        "pType": "LOGINRES",
+                        
+                    });
+                   
+                    var byteBuffer = msg.encode().toBuffer();
+                    
+                    responder.send(byteBuffer);
+                    console.log("joine user key : " + key + "user id " + id);
+
+                    mapIdToKey.set(key , id);
+
+                    var rm = createRoom(key, b2d);
+                    rm.init();
+                    gameWorld.set(key, rm);
+                    if (gameWorld.has(key)) {                        
+                        console.log("added : " + key + "length : " + key.length);
+                    }
+                    
+                    break;
+                }
+            case 5: //syncreq    
+                {
+                    
+                    var key = pkInfo.syncReq.key.toString();
+
+                    console.log("received syncRes :" + key + ", length : " + key.length);
+
+                    gameWorld.forEach(function (item, k, mapObj) {
+                        console.log("gameWorld.forEach : " + k);
+                        if (k == key) {
+                            console.log("gameWorld.has(key)");
+
+                            var pos = item.getBodyPos();
+
+                            var ProjectA = protobuf.build("ProjectA");
+                            console.log(pos);
+                            var msg = new ProjectA.OneMessage({
+                                
+                                "syncRes": {
+                                    "x": Math.floor( pos.x),
+                                    "y": Math.floor( pos.y),
+                                },
+                                "pType": "SYNKRES",
+
+                            });
+
+                            var byteBuffer = msg.encode().toBuffer();
+
+                            if (responder.send(byteBuffer))
+                                console.log("sent SYNKRES");
+                        }
+                        else {
+                            console.log("not found" + key);
+                        }
+                    });
+                    
+                    break;
+                }
+
+                
+        }
+
+            
+            /*
+            console.log("login ID : " + loginInfo.id);
+            var loginRes = SomeMessage.LoginRes;
+            loginRes = new SomeMessage.LoginRes({
+                "type": {
+                    "type": 2,
+                    "id": loginInfo.id
+                },
+                "bResult": true,
+                "key":"ok",t
+            });
+            var buffer = loginRes.encode();
+            var array = buffer.toBase64();
+            responder.send(array);
+            //responder.send("aaaaa");
+            console.log("buffer.toArrayBuffer()" + buffer.toBase64());
+           
+        }
+        else if (type == 4)
+        {
+            var position = gameWorld[id].getBodyPos();
+            var pos = { 'x': position.x, 'y': position.y };
+            responder.send(JSON.stringify(pos));
+            console.log("responder.on(message " + id + data);
+            gameWorld[id].update();
+        } */
+
+
+        
+
         
     });
 

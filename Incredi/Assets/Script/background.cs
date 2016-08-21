@@ -5,6 +5,7 @@ using System.Timers;
 using NetMQ; // for NetMQConfig
 using NetMQ.Sockets;
 using NetMQ.Monitoring;
+using System.IO;
 
 [System.Serializable]
 public class Position
@@ -40,15 +41,22 @@ public class PacketRespwan :  IProtocol
     }
 };
 
+enum STATUS
+{
+    E_LOGIN_REQUIED,
+    E_INGAME,
+}
 
 public class background : MonoBehaviour
 {
     Thread client_thread_;
     private Object thisLock_ = new Object();
     bool stop_thread_ = false;
-    public Position pos;
+    public Position m_Position;
     bool m_send;
-    IProtocol m_pk;
+    string m_key;
+
+    STATUS m_State = STATUS.E_LOGIN_REQUIED;
 
     void Start()
     {
@@ -58,18 +66,77 @@ public class background : MonoBehaviour
         Debug.Log("Start a request thread.");
         client_thread_ = new Thread(NetMQClient);
         client_thread_.Start();
+
+       
     }
     
-    public void Add()
+    public Stream GenerateStreamFromString(string s)
     {
-       // switch(objType)
+        MemoryStream stream = new MemoryStream();
+        StreamWriter writer = new StreamWriter(stream);
+        writer.Write(s);
+        writer.Flush();
+        stream.Position = 0;
+        return stream;
+    }
+
+    public void SendSyncReq(RequestSocket req)
+    {
+        ProjectA.OneMessage syncMsg = new ProjectA.OneMessage();
+        syncMsg.pType = ProjectA.OneMessage.ProtocolType.SYNKREQ;
+        syncMsg.syncReq = new ProjectA.SyncReq();
+        syncMsg.syncReq.key = m_key;
+        syncMsg.syncReq.Count = 0;
+
+        using (MemoryStream mem = new MemoryStream())
         {
-          //  case Protocol_Type.Respwan:
-                PacketRespwan pk = new PacketRespwan();
-                m_pk = pk;
-                m_send = true;
-             //   break;
+
+            ProtoBuf.Serializer.Serialize<ProjectA.OneMessage>(mem, syncMsg);
+            req.Send(mem.ToArray());
         }
+
+    }
+
+    public void SendLoginPacket(RequestSocket req)
+    {
+        ProjectA.OneMessage oneMsg = new ProjectA.OneMessage();
+        oneMsg.pType = ProjectA.OneMessage.ProtocolType.LOGINREQ;
+        oneMsg.loginReq = new ProjectA.LoginReq();
+        oneMsg.loginReq.id = "aaaa";
+        oneMsg.loginReq.pw = "aaaa";
+
+
+        using (MemoryStream mem = new MemoryStream())
+        {
+            ProtoBuf.Serializer.Serialize<ProjectA.OneMessage>(mem, oneMsg);
+            req.Send(mem.ToArray());
+        }
+    }
+
+    void PacketProcess(ProjectA.OneMessage receivedMSG, RequestSocket req)
+    {
+        
+        switch (receivedMSG.pType)
+        {
+            case ProjectA.OneMessage.ProtocolType.LOGINRES:
+                m_key = receivedMSG.loginRes.key;
+                Debug.Log("Ok ... ProjectA.OneMessage.ProtocolType.LOGINRES key : " + m_key);
+                m_State = STATUS.E_INGAME;
+               
+
+                break;
+            case ProjectA.OneMessage.ProtocolType.SYNKRES:
+                {
+                    m_Position.x = (float)receivedMSG.syncRes.x;
+                    m_Position.y = (float)receivedMSG.syncRes.y;
+                    Debug.Log("Received POS x " + m_Position.x + "POS y : " + m_Position.y);
+
+
+                    
+                    break;
+                }
+        }
+        return;
     }
 
     // Client thread which does not block Update()
@@ -77,72 +144,43 @@ public class background : MonoBehaviour
     {
         AsyncIO.ForceDotNet.Force();
         using (var context = NetMQContext.Create())
-        using (var res = context.CreateResponseSocket())
+        //using (var sub = context.CreateSubscriberSocket())
         using (var req = context.CreateRequestSocket())
         {
             // bind the server to a local tcp address
-           // server.Bind("tcp://localhost:4231");
+            // server.Bind("tcp://localhost:4231");
 
             // connect the client to the server
             req.Connect("tcp://127.0.0.1:5433");
-            
-            // send a message from the req socket
-            
+            Thread.Sleep(500);
+
+            SendLoginPacket(req);
+                
             string msg;
             var timeout = new System.TimeSpan(0, 0, 1); //1sec
-            req.Send("aaaaa");
-            //bool is_connected = req.TryReceiveFrameString(timeout, out msg);
-             
-            while ( stop_thread_ == false)
-            {
-               
-                //Debug.Log("Request a message.");
-                /*if(m_send)
-                {
-                    string json = JsonUtility.ToJson(m_pk);
-                    req.Send(json);
-                    m_send = false;
-                }*/
 
+            int nCount = 0;
+            bool init = false;
+
+            while (stop_thread_ == false)
+            {
                 if (req.TryReceiveFrameString(timeout, out msg))
                 {
-                    req.TrySendFrame("aaaaa");
+                    using (Stream s = GenerateStreamFromString(msg))
+                    {
 
-                    pos = Position.CreateFromJson(msg);
-                    Debug.Log(pos.x);
-                    Debug.Log(pos.y);
+                        ProjectA.OneMessage receivedMSG = ProtoBuf.Serializer.Deserialize<ProjectA.OneMessage>(s);
+                        PacketProcess(receivedMSG, req);
+                        SendSyncReq(req);
+                        //SendLoginPacket(req);
+                    }
                 }
-                    
-                
                 Thread.Sleep(500);
             }
 
-
-        }
-        return;
-            //NetMQConfig.ManualTerminationTakeOver();
-            //NetMQConfig.ContextCreate(true);
-            /*
-            string msg;
-        var timeout = new System.TimeSpan(0, 0, 1); //1sec
-
-        Debug.Log("Connect to the server.");
-        var requestSocket = new RequestSocket(">tcp://192.168.11.36:50020");
-        requestSocket.SendFrame("SUB_PORT");
-        bool is_connected = requestSocket.TryReceiveFrameString(timeout, out msg);
-
-        while (is_connected && stop_thread_ == false)
-        {
-            Debug.Log("Request a message.");
-            requestSocket.SendFrame("msg");
-            is_connected = requestSocket.TryReceiveFrameString(timeout, out msg);
-            Debug.Log("Sleep");
-            Thread.Sleep(1000);
-        }
-
-        requestSocket.Close();
-        Debug.Log("ContextTerminate.");*/
-        //NetMQConfig.ContextTerminate();
+            req.Close();
+        }            
+             
     }
 
     void Update()

@@ -14,7 +14,7 @@ public class Move : MonoBehaviour {
 	// Update is called once per frame
 	void Update () {
         background bg = cam.GetComponent<background>();
-        Vector2 v = new Vector2(bg.pos.x, bg.pos.y);
+        Vector2 v = new Vector2(bg.m_Position.x, bg.m_Position.y);
         transform.position = v;
         
     }
