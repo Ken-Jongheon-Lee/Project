@@ -55,6 +55,7 @@ public class background : MonoBehaviour
     public Position m_Position;
     bool m_send;
     string m_key;
+    string m_id;
 
     STATUS m_State = STATUS.E_LOGIN_REQUIED;
 
@@ -66,8 +67,9 @@ public class background : MonoBehaviour
         Debug.Log("Start a request thread.");
         client_thread_ = new Thread(NetMQClient);
         client_thread_.Start();
+        m_id = GetUniqueString();
 
-       
+
     }
     
     public Stream GenerateStreamFromString(string s)
@@ -97,12 +99,27 @@ public class background : MonoBehaviour
 
     }
 
+    public string GetUniqueString()
+    {
+        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        var stringChars = new char[8];
+        
+
+        for (int i = 0; i < stringChars.Length; i++)
+        {
+            stringChars[i] = chars[Random.RandomRange(0,chars.Length)];
+        }
+
+        var finalString = new string(stringChars);
+        return finalString;
+    }
+
     public void SendLoginPacket(RequestSocket req)
     {
         ProjectA.OneMessage oneMsg = new ProjectA.OneMessage();
         oneMsg.pType = ProjectA.OneMessage.ProtocolType.LOGINREQ;
         oneMsg.loginReq = new ProjectA.LoginReq();
-        oneMsg.loginReq.id = "aaaa";
+        oneMsg.loginReq.id = m_id;
         oneMsg.loginReq.pw = "aaaa";
 
 

@@ -118,8 +118,8 @@ if (cluster.isMaster) {
     });
 
     // forward messages between router and dealer
-    router.on('message', function () {
-	    console.log("router.on");
+    router.on('message', function (data) {
+	    console.log("router.on" + data);
         let frames = Array.apply(null, arguments);
         dealer.send(frames);
     });
@@ -129,7 +129,7 @@ if (cluster.isMaster) {
         let frames = Array.apply(null, arguments);
         console.log(" dealer.on" + frames.length);
         router.send(frames);
-
+        
 
     });
 

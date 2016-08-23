@@ -1,8 +1,0 @@
-package feeds;
-message Feed {
-  optional string title = 1;
-  message Entry {
-    optional string title = 1;
-  }
-  repeated Entry entry = 2;
-}
