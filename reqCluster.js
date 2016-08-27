@@ -11,7 +11,7 @@ var b2d = require("./box2dnode");
 var ProtoBuf = require("protobufjs");
 var protobuf = ProtoBuf.protoFromFile("projectA.proto");
 
-var createRoom = function (id, b2b) {
+var createWorld = function (id, b2b) {
     var self = {
         isInit: false,
         id: id,
@@ -193,7 +193,7 @@ if (cluster.isMaster) {
 
                     mapIdToKey.set(key , id);
 
-                    var rm = createRoom(key, b2d);
+                    var rm = createWorld(key, b2d);
                     rm.init();
                     gameWorld.set(key, rm);
                     if (gameWorld.has(key)) {                        
@@ -221,6 +221,7 @@ if (cluster.isMaster) {
                             var msg = new ProjectA.OneMessage({
                                 
                                 "syncRes": {
+                                    "key": key,
                                     "x": Math.floor( pos.x),
                                     "y": Math.floor( pos.y),
                                 },

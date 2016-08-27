@@ -14,11 +14,10 @@ var net = require('net');
 
 var b2d = require("./box2dnode");
 var ProtoBuf = require("protobufjs");
-var protobuf = ProtoBuf.loadProtoFile("projectA.proto");
-
+var protobuf = ProtoBuf.protoFromFile("projectA.proto");
 
 var brokerAdd = "tcp://127.0.0.1:55555";
-                          
+
 var NUM_WORKER = 4;
 
 function makekey() {
@@ -44,8 +43,6 @@ var createWorld = function (id, b2b) {
     };
 
     self.getBodyPos = function () {
-        if (self.body === null || self.isInit === false)
-            return null;
         return self.body.GetPosition();
     }
 
@@ -100,7 +97,7 @@ if (cluster.isMaster) {
 
     // variable
     var users = new Map();
-    
+
     //
     let router = zmq.socket('router');
     let dealer = zmq.socket('dealer');
@@ -108,7 +105,7 @@ if (cluster.isMaster) {
     router.monitor(500, 0);
     router.bind('tcp://127.0.0.1:5433');
 
-    
+
     //pitago setup
     var broker = new Broker(brokerAdd);
     broker.start();
@@ -119,50 +116,56 @@ if (cluster.isMaster) {
         console.log('ERROR', e);
     });
 
-    
+    /*
+    var world = createWorld("aaaa", b2d);
+    world.init();
 
-    
+    setInterval(function () {
+        if (world.isInit === true) {
+            world.update(100.0);
+        }
+    }, 100);
+    */
 
 
     //call backs
-    
+
 
     router.on('accept', function (data, ep) {
         console.log('accept : ' + data);
     });
 
     router.on('message', function (address, empty, ready) {
-    
-        var ProjectA = protobuf.build("ProjectA");
-        var pkInfo = ProjectA.OneMessage.decode(arguments[2]);
+
+        var OneMsg = protobuf.build("ProjectA");
+        var pkInfo = OneMsg.OneMessage.decode(arguments[2]);
         var jsonInfo = JSON.stringify(pkInfo);
         console.log("message : " + jsonInfo);
         var identity = arguments[0];
 
         var key;
-        switch(pkInfo.pType)
-        {
+        switch (pkInfo.pType) {
             case 1: //loginReq
-            {
-                var id = pkInfo.loginReq.id;
-                if (!users.has(id)) {
-                    key = makekey();
-                    users.set(id, key);
-                    console.log(id + " has joined key : " + key);
-                    //todo fork한 프로세서로 메세지를 보낼게 아님 
-                    var wk = cluster.fork();
-                    wk.send(key);
-                } else {
-                    //exception, received login request but it already has the session
-                    key = users.get(id);
-                }    
-                break;
-            }
+                {
+                    var id = pkInfo.loginReq.id;
+                    if (!users.has(id)) {
+                        key = makekey();
+                        users.set(id, key);
+                        console.log(id + " has joined key : " + key);
+                        //todo fork한 프로세서로 메세지를 보낼게 아님 
+                        var wk = cluster.fork();
+                        wk.send(key);
+                    } else {
+                        //exception, received login request but it already has the session
+                        key = users.get(id);
+                    }
+                    break;
+                }
             case 5:
                 {
                     key = pkInfo.syncReq.key;
-                break;
-            }
+                    break;
+                }
         }
 
         var ddd;
@@ -170,22 +173,18 @@ if (cluster.isMaster) {
             ddd = data;
             console.log(data);
 
-            //send res                    
+        }).on('end', function () {
             var ProjectA = protobuf.build("ProjectA");
+
+            //send res                    
             var msg = new ProjectA.OneMessage(ddd);
+            console.log(ddd);
 
             var byteBuffer = msg.encode().toBuffer();
-            console.log("res packet created" + byteBuffer);
-
             router.send([address, empty, byteBuffer]);
-
-        }).on('end', function () {
-            
-
-            
         });
 
-        
+
     });
 } else {
 
@@ -203,22 +202,18 @@ if (cluster.isMaster) {
         var world = createWorld(key, b2d);
         world.init();
 
-        
         setInterval(function () {
             if (world.isInit === true) {
-                world.update(1.0 / 60.0);
-                pos = world.body.GetPosition();
-        
-                
+                world.update(1);
             }
-        }, 100);
-        
+        }, 10);
+
         pigatoWorker.on('request', function (inp, rep, opts) {
 
             var byteBuffer;
             switch (inp.pType) {
                 case 1:
-                    console.log("worker recevied sync , id : " + inp.loginReq.id + " key" + key);
+                    console.log("worker recevied sync , id : " + inp.loginReq.id);
 
                     //send res                    
                     rep.write({
@@ -232,29 +227,33 @@ if (cluster.isMaster) {
 
                 case 5: //syncReq
                     {
+                        var pos = world.body.GetPosition();
 
+                        var x = Math.floor(pos.x);
+                        var y = Math.floor(pos.y);
+
+                        console.log("floor " + x + " ," + y);
                         rep.write({
                             "pType": "SYNKRES",
                             "syncRes": {
                                 "x": pos.x,
-                                "y": pos.y,
-                                "key": key,
+                                "y": pos.x,
                             },
                         });
                     }
                     break;
-                    
-                    
+
+
             }
             rep.end();
         });
     });
 
-    
 
 
 
-   
 
-    
+
+
+
 }

@@ -67,7 +67,7 @@ public class background : MonoBehaviour
         Debug.Log("Start a request thread.");
         client_thread_ = new Thread(NetMQClient);
         client_thread_.Start();
-        m_id = GetUniqueString();
+        m_id = "aaaa";
 
 
     }
@@ -78,6 +78,14 @@ public class background : MonoBehaviour
         StreamWriter writer = new StreamWriter(stream);
         writer.Write(s);
         writer.Flush();
+        stream.Position = 0;
+        return stream;
+    }
+
+    public Stream GenerateStreamFromBuffer(byte [] s)
+    {
+        MemoryStream stream = new MemoryStream();
+        stream.Write(s, 0, s.Length);
         stream.Position = 0;
         return stream;
     }
@@ -173,7 +181,7 @@ public class background : MonoBehaviour
 
             SendLoginPacket(req);
                 
-            string msg;
+            
             var timeout = new System.TimeSpan(0, 0, 1); //1sec
 
             int nCount = 0;
@@ -181,18 +189,24 @@ public class background : MonoBehaviour
 
             while (stop_thread_ == false)
             {
-                if (req.TryReceiveFrameString(timeout, out msg))
+                //string msg;
+                byte[] msg;
+                bool bMore;
+                if (req.TryReceiveFrameBytes(timeout, out msg, out bMore))
                 {
-                    using (Stream s = GenerateStreamFromString(msg))
-                    {
+                        using (Stream s = GenerateStreamFromBuffer(msg))
+                        {
 
-                        ProjectA.OneMessage receivedMSG = ProtoBuf.Serializer.Deserialize<ProjectA.OneMessage>(s);
-                        PacketProcess(receivedMSG, req);
-                        SendSyncReq(req);
-                        //SendLoginPacket(req);
-                    }
+                            ProjectA.OneMessage receivedMSG = ProtoBuf.Serializer.Deserialize<ProjectA.OneMessage>(s);
+                            PacketProcess(receivedMSG, req);
+                            SendSyncReq(req);
+                            //SendLoginPacket(req);
+                        }
+                    
+                    
+                    
                 }
-                Thread.Sleep(500);
+                Thread.Sleep(30);
             }
 
             req.Close();
