@@ -24,6 +24,18 @@ message RespawnRes {
 	required bool bResult = 1;
 	
 }
+message Position{
+	required float x = 1;
+	required float y = 2;
+}
+
+message GameUnit{
+	required int32 index = 1;
+	required float posX  = 2;
+	required float posY  = 3;
+	required float	angle = 4;
+	
+}
 
 message SyncReq {
 	required int32 Count = 1;
@@ -32,10 +44,8 @@ message SyncReq {
 
 
 message SyncRes {
-	required string key = 1;
-	required double x = 2;
-	required double y = 3;
 	
+	repeated GameUnit units = 2;	
 }
 
 message OneMessage {
@@ -44,8 +54,8 @@ message OneMessage {
 		LOGINRES = 2;
 		RESPWANREQ = 3;
 		RESPWANRES = 4;
-		SYNKREQ = 5;
-		SYNKRES = 6;
+		SYNCREQ = 5;
+		SYNCRES = 6;
 	}
 	
 	required ProtocolType pType = 1;

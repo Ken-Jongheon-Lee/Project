@@ -9,13 +9,14 @@ const
 var Broker = require('./pigato-master/lib/Broker');
 var Client = require('./pigato-master/lib/Client');
 var Worker = require('./pigato-master/lib/Worker');
+var World = require('./gameWorld.js');
 
 var net = require('net');
 
-var b2d = require("./box2dnode");
+
 var ProtoBuf = require("protobufjs");
 var protobuf = ProtoBuf.loadProtoFile("projectA.proto");
-
+var b2d = require("./box2dnode");
 
 var brokerAdd = "tcp://127.0.0.1:55555";
                           
@@ -32,68 +33,6 @@ function makekey() {
 }
 
 
-
-var createWorld = function (id, b2b) {
-    var self = {
-        isInit: false,
-        id: id,
-        worldAABB: null,
-        world: null,
-        groundBody: null,
-        body: {},
-    };
-
-    self.getBodyPos = function () {
-        if (self.body === null || self.isInit === false)
-            return null;
-        return self.body.GetPosition();
-    }
-
-    self.init = function () {
-        //if (self.worldAABB === null)
-        self.worldAABB = new b2b.b2AABB();
-        self.worldAABB.lowerBound.Set(-100.0, -100.0);
-        self.worldAABB.upperBound.Set(100.0, 100.0);
-
-        var gravity = new b2b.b2Vec2(0, -10);
-        var doSleep = true;
-        self.world = new b2d.b2World(self.worldAABB, gravity, doSleep);
-
-
-
-        {
-            var groundBodyDef = new b2b.b2BodyDef();
-            groundBodyDef.position.Set(0.0, -10.0);
-            groundBodyDef.angle = 0.0;
-            self.groundBody = self.world.CreateBody(groundBodyDef);
-
-            var groundShapeDef = new b2d.b2PolygonDef();
-            groundShapeDef.SetAsBox(50.0, 10.0);
-
-            self.groundBody.CreateShape(groundShapeDef);
-        }
-
-
-        var bodyDef = new b2d.b2BodyDef();
-        bodyDef.position.Set(0.0, 50.0);
-
-        self.body = self.world.CreateBody(bodyDef);
-
-        var shapeDef = new b2d.b2PolygonDef();
-        shapeDef.SetAsBox(1.0, 1.0);
-        shapeDef.density = 1.0;
-        shapeDef.friction = 0.3;
-        self.body.CreateShape(shapeDef);
-        self.body.SetMassFromShapes();
-
-        self.isInit = true;
-    };
-
-    self.update = function (timeStep) {
-        self.world.Step(timeStep, 10);
-    }
-    return self;
-}
 
 
 if (cluster.isMaster) {
@@ -118,12 +57,6 @@ if (cluster.isMaster) {
     client.on('error', function (e) {
         console.log('ERROR', e);
     });
-
-    
-
-    
-
-
     //call backs
     
 
@@ -162,22 +95,22 @@ if (cluster.isMaster) {
                 {
                     key = pkInfo.syncReq.key;
                 break;
-            }
+                }
+            case 3:
+                key = pkInfo.respawnReq.key;
+                break;
         }
 
         var ddd;
         client.request(key, pkInfo).on('data', function (data) {
             ddd = data;
-            console.log(data);
-
-            //send res                    
-            var ProjectA = protobuf.build("ProjectA");
+            
             var msg = new ProjectA.OneMessage(ddd);
 
             var byteBuffer = msg.encode().toBuffer();
             console.log("res packet created" + byteBuffer);
-
             router.send([address, empty, byteBuffer]);
+            
 
         }).on('end', function () {
             
@@ -200,16 +133,17 @@ if (cluster.isMaster) {
         pigatoWorker = new Worker(brokerAdd, msg);
         pigatoWorker.start();
         key = msg;
-        var world = createWorld(key, b2d);
+        var world = World.createWorld(key);
         world.init();
-
+        var pos = new b2d.b2Vec2();
         
         setInterval(function () {
             if (world.isInit === true) {
                 world.update(1.0 / 60.0);
-                pos = world.body.GetPosition();
-        
-                
+                var units = world.getBodyPos();
+                if (null != units && units.length > 0) {
+                    pos = units[0].pos;
+                }
             }
         }, 100);
         
@@ -232,17 +166,32 @@ if (cluster.isMaster) {
 
                 case 5: //syncReq
                     {
-
-                        rep.write({
-                            "pType": "SYNKRES",
+                        var units = world.getBodyPos();
+                        
+                        var res = {
+                            "pType": "SYNCRES",
                             "syncRes": {
-                                "x": pos.x,
-                                "y": pos.y,
-                                "key": key,
-                            },
-                        });
+                                units,
+                            }
+                        };
+                        rep.write(res);                       
+                       
                     }
                     break;
+                case 3:
+                    {
+                        console.log(inp.respawnReq);
+                        world.createUnit(inp.respawnReq.x, inp.respawnReq.y);
+
+                        var res = {
+                            "pType": "RESPWANRES",
+                            "respawnRes" : {
+                                "bResult": true,
+                            }
+                        };
+                        rep.write(res);   
+                        break;
+                    };
                     
                     
             }

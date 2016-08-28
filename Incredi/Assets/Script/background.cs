@@ -6,6 +6,7 @@ using NetMQ; // for NetMQConfig
 using NetMQ.Sockets;
 using NetMQ.Monitoring;
 using System.IO;
+using System.Collections.Generic;
 
 [System.Serializable]
 public class Position
@@ -28,19 +29,6 @@ public class IProtocol
     public Protocol_Type type;
 };
 
-[System.Serializable]
-public class PacketRespwan :  IProtocol
-{
-    Position pos;
-    public PacketRespwan() { type = Protocol_Type.Respwan; }
-    public Position GetPosition() { return pos;  }
-
-    public static PacketRespwan CreateFromJson(string jsonString)
-    {
-        return JsonUtility.FromJson<PacketRespwan>(jsonString);
-    }
-};
-
 enum STATUS
 {
     E_LOGIN_REQUIED,
@@ -56,13 +44,17 @@ public class background : MonoBehaviour
     bool m_send;
     string m_key;
     string m_id;
+    public ProjectA.GameUnit[] m_units;
+
+    
+    List<ProjectA.OneMessage> m_msgList;
 
     STATUS m_State = STATUS.E_LOGIN_REQUIED;
 
     void Start()
     {
         //using (var requestSocket = new RequestSocket())
-
+        m_msgList = new List<ProjectA.OneMessage>();
         m_send = true;
         Debug.Log("Start a request thread.");
         client_thread_ = new Thread(NetMQClient);
@@ -93,14 +85,13 @@ public class background : MonoBehaviour
     public void SendSyncReq(RequestSocket req)
     {
         ProjectA.OneMessage syncMsg = new ProjectA.OneMessage();
-        syncMsg.pType = ProjectA.OneMessage.ProtocolType.SYNKREQ;
+        syncMsg.pType = ProjectA.OneMessage.ProtocolType.SYNCREQ;
         syncMsg.syncReq = new ProjectA.SyncReq();
         syncMsg.syncReq.key = m_key;
         syncMsg.syncReq.Count = 0;
 
         using (MemoryStream mem = new MemoryStream())
         {
-
             ProtoBuf.Serializer.Serialize<ProjectA.OneMessage>(mem, syncMsg);
             req.Send(mem.ToArray());
         }
@@ -120,6 +111,23 @@ public class background : MonoBehaviour
 
         var finalString = new string(stringChars);
         return finalString;
+    }
+
+    public void SendRespawn()
+    {
+        ProjectA.OneMessage oneMsg = new ProjectA.OneMessage();
+        oneMsg.pType = ProjectA.OneMessage.ProtocolType.RESPWANREQ;
+        oneMsg.respawnReq = new ProjectA.RespawnReq();
+        oneMsg.respawnReq.key = m_key;
+        oneMsg.respawnReq.x = 0;
+        oneMsg.respawnReq.y = 50;
+        m_msgList.Add(oneMsg);
+        /*
+        using (MemoryStream mem = new MemoryStream())
+        {
+            ProtoBuf.Serializer.Serialize<ProjectA.OneMessage>(mem, oneMsg);
+            m_req.Send(mem.ToArray());
+        }*/
     }
 
     public void SendLoginPacket(RequestSocket req)
@@ -150,14 +158,13 @@ public class background : MonoBehaviour
                
 
                 break;
-            case ProjectA.OneMessage.ProtocolType.SYNKRES:
+            case ProjectA.OneMessage.ProtocolType.SYNCRES:
                 {
-                    m_Position.x = (float)receivedMSG.syncRes.x;
-                    m_Position.y = (float)receivedMSG.syncRes.y;
-                    Debug.Log("Received POS x " + m_Position.x + "POS y : " + m_Position.y);
-
-
-                    
+                    m_units = receivedMSG.syncRes.units.ToArray();
+                    foreach(ProjectA.GameUnit unitInfo in receivedMSG.syncRes.units)
+                    {
+                        
+                    }
                     break;
                 }
         }
@@ -169,9 +176,9 @@ public class background : MonoBehaviour
     {
         AsyncIO.ForceDotNet.Force();
         using (var context = NetMQContext.Create())
-        //using (var sub = context.CreateSubscriberSocket())
         using (var req = context.CreateRequestSocket())
         {
+
             // bind the server to a local tcp address
             // server.Bind("tcp://localhost:4231");
 
@@ -199,17 +206,32 @@ public class background : MonoBehaviour
 
                             ProjectA.OneMessage receivedMSG = ProtoBuf.Serializer.Deserialize<ProjectA.OneMessage>(s);
                             PacketProcess(receivedMSG, req);
-                            SendSyncReq(req);
+                            if(m_msgList.Count == 0)
+                            {
+                                SendSyncReq(req);
+                            }
+                            else
+                            {
+                                using (MemoryStream mem = new MemoryStream())
+                                {
+                                    ProtoBuf.Serializer.Serialize<ProjectA.OneMessage>(mem, m_msgList[0]);
+                                    req.Send(mem.ToArray());
+                                }
+                                m_msgList.Clear();
+
+                            
+                            }
+                                
                             //SendLoginPacket(req);
                         }
                     
                     
                     
                 }
-                Thread.Sleep(30);
+                Thread.Sleep(300);
             }
 
-            req.Close();
+            
         }            
              
     }
