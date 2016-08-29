@@ -55,7 +55,7 @@ module.exports = {
             self.worldAABB.lowerBound.Set(-100.0, -100.0);
             self.worldAABB.upperBound.Set(100.0, 100.0);
 
-            var gravity = new b2d.b2Vec2(0, -9);
+            var gravity = new b2d.b2Vec2(0, -20);
             var doSleep = true;
             self.world = new b2d.b2World(self.worldAABB, gravity, doSleep);
 
@@ -73,7 +73,7 @@ module.exports = {
                 self.groundBody.CreateShape(groundShapeDef);
             }
 
-            self.createUnit(0, 50);
+            
            
 
             self.isInit = true;
@@ -81,7 +81,7 @@ module.exports = {
 
         self.update = function (timeStep) {
             //self.body.SetXForm(new b2d.b2Vec2(100, 100), 100);
-            self.world.Step(timeStep, 10);
+            self.world.Step(timeStep, 8,3);
         }
         return self;
     }

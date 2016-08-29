@@ -183,7 +183,7 @@ public class background : MonoBehaviour
             // server.Bind("tcp://localhost:4231");
 
             // connect the client to the server
-            req.Connect("tcp://127.0.0.1:5433");
+            req.Connect("tcp://192.168.0.4:5433");
             Thread.Sleep(500);
 
             SendLoginPacket(req);
@@ -206,29 +206,25 @@ public class background : MonoBehaviour
 
                             ProjectA.OneMessage receivedMSG = ProtoBuf.Serializer.Deserialize<ProjectA.OneMessage>(s);
                             PacketProcess(receivedMSG, req);
-                            if(m_msgList.Count == 0)
-                            {
+                            if (m_msgList.Count == 0)
                                 SendSyncReq(req);
-                            }
-                            else
-                            {
-                                using (MemoryStream mem = new MemoryStream())
-                                {
-                                    ProtoBuf.Serializer.Serialize<ProjectA.OneMessage>(mem, m_msgList[0]);
-                                    req.Send(mem.ToArray());
-                                }
-                                m_msgList.Clear();
-
-                            
-                            }
-                                
-                            //SendLoginPacket(req);
+                       
                         }
                     
                     
                     
                 }
-                Thread.Sleep(300);
+                if (m_msgList.Count == 0)
+                    Thread.Sleep(500);
+                else
+                {
+                    using (MemoryStream mem = new MemoryStream())
+                    {
+                        ProtoBuf.Serializer.Serialize<ProjectA.OneMessage>(mem, m_msgList[0]);
+                        req.Send(mem.ToArray());
+                    }
+                    m_msgList.Clear();
+                }
             }
 
             
