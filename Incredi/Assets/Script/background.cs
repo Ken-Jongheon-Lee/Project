@@ -215,7 +215,7 @@ public class background : MonoBehaviour
                     
                 }
                 if (m_msgList.Count == 0)
-                    Thread.Sleep(500);
+                    Thread.Sleep(50);
                 else
                 {
                     using (MemoryStream mem = new MemoryStream())

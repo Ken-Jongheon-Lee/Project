@@ -32,7 +32,8 @@ public class GameObjMgr : MonoBehaviour {
                         found = true;
                         existObj.m_lastPos = existObj.m_newPos;
                         existObj.m_newPos = new Vector2(bg.m_units[i].posX, bg.m_units[i].posY);
-                        obj.transform.rotation = Quaternion.EulerAngles(Vector3.forward * (bg.m_units[i].angle * Mathf.Rad2Deg));
+                        existObj.m_lastRot = existObj.m_newRot;
+                        existObj.m_newRot = bg.m_units[i].angle;
                         existObj.LastReceieveDelta = Time.time - existObj.LastReceive;
                         existObj.LastReceive = Time.time;
                         
