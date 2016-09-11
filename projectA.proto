@@ -68,37 +68,4 @@ message OneMessage {
 
 }
 
-message HeartBeatReq {
-	required int32 WorkerCount = 1;	
-}
-
-message HeartBeatRes {
-}
-
-message CreateRoomToWorkerReq {
-
-	
-	required string id = 1;
-}
-
-message CreatedRoomToBrokerAns{
-	required string id = 1;
-	required string roomkey = 2;
-}
-
-message ClusterMessage {
-	
-	required ProtocolType pType = 1;
-	optional HeartBeatReq heartbeatReq = 2;
-	optional HeartBeatRes heartbeatRes = 3;
-	optional CreateRoomToWorkerReq createRoomReq = 4;
-	optional CreatedRoomToBrokerAns createdRoomAns = 5;
-	
-	enum ProtocolType{
-		HEART_BEAT_REQ = 1;
-		HEART_BEAT_REA = 2;	
-		CREATE_ROOM_REQ = 3;
-		CREATE_ROOM_REA = 4;
-	}
-}
 

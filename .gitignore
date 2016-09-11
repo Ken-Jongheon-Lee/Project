@@ -7,10 +7,3 @@ typings/
 *.suo
 *.suo
 Incredi/Assets/Sprite/prop-crate-plain.png.meta
-cache/
-node_modules/
-typings/
-practiceRestfulAPI.js
-*.js
-typings/globals/node/index.d.ts
-NodejsApp1.njsproj

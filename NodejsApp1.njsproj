@@ -6,7 +6,7 @@
     <ProjectGuid>{eeb227d7-692d-45b4-851a-2b898d35f6af}</ProjectGuid>
     <ProjectHome />
     <ProjectView>ShowAllFiles</ProjectView>
-    <StartupFile>clusterWorker.js</StartupFile>
+    <StartupFile>majorDomoPattern.js</StartupFile>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{3AF33F2E-1136-4D97-BBB7-1795711AC8B8};{349c5851-65df-11da-9384-00065b846f21};{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}</ProjectTypeGuids>
@@ -16,9 +16,7 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
   <ItemGroup>
-    <Compile Include="clusterWorker.js" />
     <Compile Include="majorDomoPattern.js" />
-    <Compile Include="practiceRestfulAPI.js" />
     <Compile Include="protobufjs\cli\pbjs.js" />
     <Compile Include="protobufjs\cli\pbjs\sources\binary.js" />
     <Compile Include="protobufjs\cli\pbjs\sources\json.js" />
@@ -1207,10 +1205,8 @@
     <Folder Include="typings\globals\" />
     <Folder Include="typings\globals\es6-shim\" />
     <Folder Include="typings\globals\express\" />
-    <Folder Include="typings\globals\mongodb\" />
     <Folder Include="typings\globals\node\" />
     <Folder Include="typings\globals\protobufjs\" />
-    <Folder Include="typings\globals\request\" />
     <Folder Include="typings\globals\socket.io\" />
     <Folder Include="Unity" />
     <Folder Include="Unity\SocketIO" />
@@ -1501,10 +1497,8 @@
   <ItemGroup>
     <TypeScriptCompile Include="typings\globals\es6-shim\index.d.ts" />
     <TypeScriptCompile Include="typings\globals\express\index.d.ts" />
-    <TypeScriptCompile Include="typings\globals\mongodb\index.d.ts" />
     <TypeScriptCompile Include="typings\globals\node\index.d.ts" />
     <TypeScriptCompile Include="typings\globals\protobufjs\index.d.ts" />
-    <TypeScriptCompile Include="typings\globals\request\index.d.ts" />
     <TypeScriptCompile Include="typings\globals\socket.io\index.d.ts" />
     <TypeScriptCompile Include="typings\index.d.ts" />
   </ItemGroup>
