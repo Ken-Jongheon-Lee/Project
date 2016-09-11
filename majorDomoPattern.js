@@ -18,7 +18,7 @@ var ProtoBuf = require("protobufjs");
 var protobuf = ProtoBuf.loadProtoFile("projectA.proto");
 var b2d = require("./box2dnode");
 
-var brokerAdd = "tcp://127.0.0.1:55555";
+var brokerAdd = "tcp://192.168.0.4:55555";
                           
 var NUM_WORKER = 4;
 
@@ -45,7 +45,7 @@ if (cluster.isMaster) {
     let dealer = zmq.socket('dealer');
 
     router.monitor(500, 0);
-    router.bind('tcp://127.0.0.1:5433');
+    router.bind('tcp://192.168.0.4:5433');
 
     
     //pitago setup
@@ -69,7 +69,7 @@ if (cluster.isMaster) {
         var ProjectA = protobuf.build("ProjectA");
         var pkInfo = ProjectA.OneMessage.decode(arguments[2]);
         var jsonInfo = JSON.stringify(pkInfo);
-        console.log("message : " + jsonInfo);
+        //console.log("message : " + jsonInfo);
         var identity = arguments[0];
 
         var key;
@@ -105,15 +105,15 @@ if (cluster.isMaster) {
         client.request(key, pkInfo).on('data', function (data) {
             ddd = data;
             
-            var msg = new ProjectA.OneMessage(ddd);
 
-            var byteBuffer = msg.encode().toBuffer();
-            console.log("res packet created" + byteBuffer);
-            router.send([address, empty, byteBuffer]);
             
 
         }).on('end', function () {
-            
+            var msg = new ProjectA.OneMessage(ddd);
+
+            var byteBuffer = msg.encode().toBuffer();
+            //console.log("res packet created" + byteBuffer);
+            router.send([address, empty, byteBuffer]);        
 
             
         });
@@ -130,22 +130,17 @@ if (cluster.isMaster) {
 
         console.log("created pigatoWorker, key : " + msg);
 
-        pigatoWorker = new Worker(brokerAdd, msg);
+        pigatoWorker = new Worker(brokerAdd, msg, { timeout: -1 });
         pigatoWorker.start();
         key = msg;
         var world = World.createWorld(key);
         world.init();
-        var pos = new b2d.b2Vec2();
         
         setInterval(function () {
             if (world.isInit === true) {
-                world.update(1.0 / 60.0);
-                var units = world.getBodyPos();
-                if (null != units && units.length > 0) {
-                    pos = units[0].pos;
-                }
+                world.update(1 / 60.0);
             }
-        }, 100);
+        }, 10);
         
         pigatoWorker.on('request', function (inp, rep, opts) {
 
@@ -163,35 +158,32 @@ if (cluster.isMaster) {
                         "pType": "LOGINRES",
                     });
                     break;
-
-                case 5: //syncReq
-                    {
-                        var units = world.getBodyPos();
-                        
-                        var res = {
-                            "pType": "SYNCRES",
-                            "syncRes": {
-                                units,
-                            }
-                        };
-                        rep.write(res);                       
-                       
-                    }
-                    break;
-                case 3:
+                case 3: //respawn
                     {
                         console.log(inp.respawnReq);
                         world.createUnit(inp.respawnReq.x, inp.respawnReq.y);
 
-                        var res = {
+                        rep.write({
                             "pType": "RESPWANRES",
-                            "respawnRes" : {
+                            "respawnRes": {
                                 "bResult": true,
                             }
-                        };
-                        rep.write(res);   
+                        });
                         break;
                     };
+                case 5: //syncReq
+                    {
+                        var units = world.getBodyPos();                        
+                        rep.write({
+                            "pType": "SYNCRES",
+                            "syncRes": {
+                                units,
+                            }
+                        });                       
+                        break;   
+                    }
+                    
+                
                     
                     
             }
