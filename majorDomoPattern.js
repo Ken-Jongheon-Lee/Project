@@ -11,7 +11,7 @@ var Client = require('./pigato-master/lib/Client');
 var Worker = require('./pigato-master/lib/Worker');
 var World = require('./gameWorld.js');
 
-var net = require('net');
+
 
 
 var ProtoBuf = require("protobufjs");
@@ -19,8 +19,10 @@ var protobuf = ProtoBuf.loadProtoFile("projectA.proto");
 var b2d = require("./box2dnode");
 
 var brokerAdd = "tcp://192.168.0.4:55555";
-                          
+var workerRouterAddr = 'tcp://192.168.0.4:5432';                          
 var NUM_WORKER = 4;
+var waitingUser = [];
+var readyUser = [];
 
 function makekey() {
     var text = "";
@@ -41,12 +43,50 @@ if (cluster.isMaster) {
     var users = new Map();
     
     //
-    let router = zmq.socket('router');
-    let dealer = zmq.socket('dealer');
+    let routerForClients = zmq.socket('router');
+    let routerForWorkers = zmq.socket('router');
 
-    router.monitor(500, 0);
-    router.bind('tcp://192.168.0.4:5433');
+    routerForWorkers.on('message', function (address, recivedMsg, ready) {
+        var ProjectA = protobuf.build("ProjectA");
+        var pkInfo = ProjectA.ClusterMessage.decode(recivedMsg);
+        switch (pkInfo.pType)
+        {   
+            case 1: //'HEART_BEAT_REQ':
+                {
+                    if (waitingUser.length == 0) {
+                        var msg = new ProjectA.ClusterMessage({
+                            "pType": "HEART_BEAT_REA",
+                            "heartbeatRes": {}
+                        });
+                        console.log("HEART_BEAT_REQ");
 
+                        var byteBuffer = msg.encode().toBuffer();
+                        routerForWorkers.send([address, byteBuffer]);
+                    } else {
+                        var msg = new ProjectA.ClusterMessage({
+                            "pType": "CREATE_ROOM_REQ",
+                            "createRoomReq": {id : waitingUser[0].id}
+                        });
+                        waitingUser.splice(0, 1);
+                        console.log("CREART ROOM REQUEST");
+                        var byteBuffer = msg.encode().toBuffer();
+                        routerForWorkers.send([address, byteBuffer]);
+                    }
+                }
+                break;
+            case 4://CREATE_ROOM_REP
+                {
+                    console.log("before readyUser.push" + jsonInfo);                    
+                    readyUser.push({ "roomkey": pkInfo.createdRoomAns.roomkey, "id": pkInfo.createdRoomAns.id });
+                                        
+                    break;
+                }
+        }
+    });
+
+    routerForClients.monitor(500, 0);
+    routerForClients.bind('tcp://192.168.0.4:5433');
+    routerForWorkers.bind(workerRouterAddr);
     
     //pitago setup
     var broker = new Broker(brokerAdd);
@@ -60,17 +100,17 @@ if (cluster.isMaster) {
     //call backs
     
 
-    router.on('accept', function (data, ep) {
+    routerForClients.on('accept', function (data, ep) {
         console.log('accept : ' + data);
     });
 
-    router.on('message', function (address, empty, ready) {
+    routerForClients.on('message', function (address, empty, ready) {
     
         var ProjectA = protobuf.build("ProjectA");
         var pkInfo = ProjectA.OneMessage.decode(arguments[2]);
         var jsonInfo = JSON.stringify(pkInfo);
         //console.log("message : " + jsonInfo);
-        var identity = arguments[0];
+        //var identity = arguments[0];
 
         var key;
         switch(pkInfo.pType)
@@ -79,12 +119,19 @@ if (cluster.isMaster) {
             {
                 var id = pkInfo.loginReq.id;
                 if (!users.has(id)) {
+                    
                     key = makekey();
                     users.set(id, key);
+                    waitingUser.push({ "id": id, "key": key });
+                    console.log("add user to waitingUser");
+
+                    /*
                     console.log(id + " has joined key : " + key);
                     //todo fork한 프로세서로 메세지를 보낼게 아님 
                     var wk = cluster.fork();
                     wk.send(key);
+                    */
+
                 } else {
                     //exception, received login request but it already has the session
                     key = users.get(id);
@@ -100,24 +147,18 @@ if (cluster.isMaster) {
                 key = pkInfo.respawnReq.key;
                 break;
         }
-
+        /*
         var ddd;
         client.request(key, pkInfo).on('data', function (data) {
             ddd = data;
-            
-
-            
-
         }).on('end', function () {
             var msg = new ProjectA.OneMessage(ddd);
 
             var byteBuffer = msg.encode().toBuffer();
             //console.log("res packet created" + byteBuffer);
-            router.send([address, empty, byteBuffer]);        
-
-            
+            routerForClients.send([address, empty, byteBuffer]); 
         });
-
+        */
         
     });
 } else {
@@ -182,10 +223,6 @@ if (cluster.isMaster) {
                         });                       
                         break;   
                     }
-                    
-                
-                    
-                    
             }
             rep.end();
         });
